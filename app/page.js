@@ -1,9 +1,9 @@
-"use client"
+'use client';
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { format, subDays } from 'date-fns';
 
-// Import all the components (no changes here)
+// Import all the components
 import Sidebar from './components/Sidebar';
 import DashboardContent from './components/DashboardContent';
 import FocusModeContent from './components/FocusModeContent';
@@ -15,191 +15,249 @@ import AIAssistantContent from './components/AIAssistantContent';
 import ProductivityModal from './components/ProductivityModal';
 import WelcomeModal from './components/WelcomeModal';
 
-// Import custom hooks
-import { useAuthUser } from '@/lib/useAuthUser';
-import { useAuthTasks } from '@/lib/useAuthTasks';
-
 export default function Home() {
-  // Use custom hooks for authentication and data management
-  const { userData, loading: userLoading, error: userError, isSignedIn, updateProgress } = useAuthUser();
-  const { tasks, loading: tasksLoading, error: tasksError, createTask, updateTask, deleteTask } = useAuthTasks();
-  
-  // Local state
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeSection, setActiveSection] = useState('tasks');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [productivityLevel, setProductivityLevel] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [showProductivityModal, setShowProductivityModal] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-  // Show productivity modal for new users or when productivity level is not set
-  useEffect(() => {
-    if (isSignedIn && userData && !productivityLevel) {
-      setShowProductivityModal(true);
-    }
-  }, [isSignedIn, userData, productivityLevel]);
+  // Default user data for new users or if localStorage is empty/corrupted
+  const defaultUserData = {
+    name: 'User',
+    totalTasksCompleted: 0,
+    totalFocusTime: 0,
+    totalPomodoroSessions: 0,
+    currentStreak: 0,
+    xp: 0,
+    level: 1,
+    dailyStats: [],
+    history: [],
+  };
 
-  // Show welcome modal for new users
   useEffect(() => {
-    if (isSignedIn && userData && !userData.purpose) {
-      setShowWelcomeModal(true);
-    }
-  }, [isSignedIn, userData]);
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUserData = localStorage.getItem('focus-app-user');
+        const storedTasks = localStorage.getItem('focus-app-tasks');
+        const storedProductivity = localStorage.getItem('focus-app-productivity-level');
 
-  // Handler to change the active section (no changes here).
+        if (storedUserData) {
+          setUserData(JSON.parse(storedUserData));
+          if (storedTasks) {
+            setTasks(JSON.parse(storedTasks));
+          }
+          if (storedProductivity) {
+            setProductivityLevel(storedProductivity);
+          }
+          setShowProductivityModal(true);
+        } else {
+          setUserData(defaultUserData);
+          setShowWelcomeModal(true);
+        }
+      } catch (error) {
+        console.error("Failed to parse data from localStorage:", error);
+        setUserData(defaultUserData);
+        setShowWelcomeModal(true);
+        setShowProductivityModal(true);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && tasks) {
+      localStorage.setItem('focus-app-tasks', JSON.stringify(tasks));
+    }
+  }, [tasks]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && userData) {
+      localStorage.setItem('focus-app-user', JSON.stringify(userData));
+    }
+  }, [userData]);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && productivityLevel) {
+      localStorage.setItem('focus-app-productivity-level', productivityLevel);
+    }
+  }, [productivityLevel]);
+
   const handleSectionChange = (section, task = null) => {
     setActiveSection(section);
     setActiveTask(task);
     setIsSidebarOpen(false);
   };
   
-  // Handle productivity level setting
-  const handleSetProductivity = async (level) => {
+  const handleSetProductivity = (level) => {
     setProductivityLevel(level);
     setShowProductivityModal(false);
-    
-    // Update user preferences in database
-    if (userData) {
-      try {
-        await updateProgress({
-          preferences: {
-            ...userData.preferences,
-            productivityLevel: level
-          }
-        });
-      } catch (error) {
-        console.error('Failed to save productivity level:', error);
-      }
-    }
   };
   
-  // Handle user info setting (for new users)
-  const handleSetUserInfo = async (info) => {
-    if (userData) {
-      try {
-        await updateProgress({
-          purpose: info.purpose,
-          source: info.source,
-          schedule: info.schedule,
-          desc: info.desc
-        });
-        setShowWelcomeModal(false);
-      } catch (error) {
-        console.error('Failed to save user info:', error);
-      }
-    }
+  const handleSetUserInfo = (info) => {
+    const newUser = {
+      ...defaultUserData,
+      ...info,
+    };
+    setUserData(newUser);
+    setShowWelcomeModal(false);
+    setShowProductivityModal(true);
   };
-  
 
-  
-  // Loading state
-  if (userLoading || tasksLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your productivity dashboard...</p>
-        </div>
-      </div>
+  const handleTaskCompletion = (taskId, duration) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId ? { ...task, completed: true } : task
+      )
     );
-  }
 
-  // Error state
-  if (userError || tasksError) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-          <p className="text-gray-600 mb-4">
-            {userError || tasksError}
-          </p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
+    setUserData(prevUserData => {
+      const currentData = prevUserData || defaultUserData;
+
+      const newTotalTasksCompleted = currentData.totalTasksCompleted + 1;
+      const newTotalFocusTime = currentData.totalFocusTime + duration;
+      const newTotalPomodoroSessions = currentData.totalPomodoroSessions + 1;
+      
+      const xpGained = 10 * duration;
+      const newXp = currentData.xp + xpGained;
+      const newLevel = Math.floor(newXp / 1000) + 1;
+
+      let newCurrentStreak = currentData.currentStreak;
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const lastActivityDate = currentData.history?.length > 0
+        ? format(new Date(currentData.history[0].completedAt), 'yyyy-MM-dd')
+        : null;
+
+      if (lastActivityDate === null) {
+        newCurrentStreak = 1;
+      } else if (lastActivityDate === format(subDays(new Date(), 1), 'yyyy-MM-dd')) {
+        newCurrentStreak += 1;
+      } else if (lastActivityDate !== today) {
+        newCurrentStreak = 1;
+      }
+
+      const newDailyStats = [...(currentData.dailyStats || [])];
+      const todayStatsIndex = newDailyStats.findIndex(d => d.date === today);
+
+      if (todayStatsIndex !== -1) {
+        newDailyStats[todayStatsIndex].tasksCompleted += 1;
+        newDailyStats[todayStatsIndex].focusTime += duration;
+      } else {
+        newDailyStats.push({
+          date: today,
+          tasksCompleted: 1,
+          focusTime: duration
+        });
+      }
+
+      const completedTask = tasks.find(t => t.id === taskId);
+      const newHistory = [
+        {
+          title: `Completed: ${completedTask?.title || 'Unknown Task'}`,
+          type: 'Pomodoro',
+          completedAt: new Date().toISOString()
+        },
+        ...(currentData.history || [])
+      ].slice(0, 10);
+
+      return {
+        ...currentData,
+        totalTasksCompleted: newTotalTasksCompleted,
+        totalFocusTime: newTotalFocusTime,
+        totalPomodoroSessions: newTotalPomodoroSessions,
+        currentStreak: newCurrentStreak,
+        xp: newXp,
+        level: newLevel,
+        dailyStats: newDailyStats,
+        history: newHistory,
+      };
+    });
+  };
+
+  // --- NEW: Task management functions for CRUD operations ---
+  const createTask = (newTask) => {
+    setTasks(prevTasks => [
+      ...prevTasks,
+      {
+        ...newTask,
+        id: Date.now(), // Simple unique ID
+        completed: false
+      }
+    ]);
+  };
+
+  const updateTask = (updatedTask) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === updatedTask.id ? updatedTask : task
+      )
     );
-  }
+  };
 
-  // Not signed in state
-  if (!isSignedIn) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="text-center max-w-md mx-auto p-8">
-          <div className="text-6xl mb-6">🚀</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">Welcome to Momentom</h1>
-          <p className="text-gray-600 mb-8">
-            Your personal productivity companion. Sign in to start tracking your progress, 
-            manage tasks, and boost your productivity with AI assistance.
-          </p>
-          <SignInButton mode="modal">
-            <button className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-lg font-semibold">
-              Get Started
-            </button>
-          </SignInButton>
-        </div>
-      </div>
-    );
-  }
+  const deleteTask = (taskId) => {
+    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+  };
+  // --- END NEW FUNCTIONS ---
 
-  // The rest of the component (renderContent, JSX structure) remains exactly the same.
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <DashboardContent tasks={tasks} userData={userData} />;
-      case 'focus':
-        return <FocusModeContent 
-          activeTask={activeTask} 
-          setTasks={setTasks} 
-          setUserData={setUserData}
-          updateProgress={updateProgress}
+        return <DashboardContent
+          tasks={tasks}
           userData={userData}
+        />;
+      case 'focus':
+        return <FocusModeContent
+          activeTask={activeTask}
+          setTasks={setTasks}
+          setUserData={setUserData}
         />;
       case 'pomodoro':
-        return <PomodoroContent 
-          activeTask={activeTask} 
-          setTasks={setTasks} 
+        return <PomodoroContent
+          activeTask={activeTask}
+          setTasks={setTasks}
           setUserData={setUserData}
-          updateProgress={updateProgress}
-          userData={userData}
         />;
       case 'tasks':
-        return <TasksPage 
-          tasks={tasks} 
-          setTasks={setTasks} 
-          onPlayTask={handleSectionChange} 
-          productivityLevel={productivityLevel} 
+        return <TasksPage
+          tasks={tasks}
+          setTasks={setTasks}
+          onPlayTask={handleSectionChange}
+          productivityLevel={productivityLevel}
           setUserData={setUserData}
+          // Correct props for TasksPage
+          onTaskComplete={handleTaskCompletion}
           createTask={createTask}
           updateTask={updateTask}
           deleteTask={deleteTask}
+          userData={userData}
         />;
       case 'settings':
         return <SettingsContent userData={userData} setUserData={setUserData} />;
       case 'profile':
-        return <ProfileContent 
-          userData={userData} 
-          setUserData={setUserData} 
-          setTasks={setTasks} 
-          setProductivityLevel={setProductivityLevel} 
-          setShowProductivityModal={setShowProductivityModal} 
+        return <ProfileContent
+          userData={userData}
+          setUserData={setUserData}
+          setTasks={setTasks}
+          setProductivityLevel={setProductivityLevel}
+          setShowProductivityModal={setShowProductivityModal}
         />;
       case 'ai':
         return <AIAssistantContent />;
       default:
-        return <DashboardContent tasks={tasks} userData={userData} />;
+        return <DashboardContent
+          tasks={tasks}
+          userData={userData}
+        />;
     }
   };
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-100">
-      
       <div className="md:hidden p-4 flex justify-between items-center bg-white shadow-md">
-        <h1 className="text-xl font-bold text-gray-800">Momentom</h1>
+        <h1 className="text-xl font-bold text-gray-800">Focus App</h1>
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 rounded-lg text-gray-700 hover:bg-gray-200 transition-colors"
@@ -238,10 +296,8 @@ export default function Home() {
         onSubmit={handleSetUserInfo}
       />
     </div>
-    
   );
 }
-
 // "use client"
 // import React, { useState, useEffect, useRef } from 'react';
 // import { LayoutDashboard, Timer, LucideFocus, Settings, User, Menu, X, CircleCheck, ListTodo, Plus, Search, Calendar, Clock, Zap, Play, Edit, Trash2, TrendingUp, TrendingDown, RefreshCw, Pause, StopCircle, Bot, Music } from 'lucide-react';

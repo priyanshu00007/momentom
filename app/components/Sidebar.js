@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import {
-  LayoutDashboard, Timer, LucideFocus, Settings, User,
+  LayoutDashboard, Timer, LucideFocus, User,
   Menu, X, Bot, ListTodo, LogOut, LogIn        // ← LogIn icon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -99,10 +99,7 @@ export default function Sidebar({
               active={activeSection === 'ai'}
               onClick={() => handleSectionChange('ai')}
               collapsed={collapsed} />
-        <Item icon={<Settings size={20} />} text="Settings"
-              active={activeSection === 'settings'}
-              onClick={() => handleSectionChange('settings')}
-              collapsed={collapsed} />
+        
         <Item icon={<User size={20} />} text="Profile"
               active={activeSection === 'profile'}
               onClick={() => handleSectionChange('profile')}
