@@ -1,0 +1,7 @@
+const initialTasks = [
+    { id: 1, title: 'Complete React Components', duration: 45, energy: 'High', date: new Date().toISOString().split('T')[0], completed: false, postponedCount: 0, priority: 'high', description: 'Build responsive task cards with animations', createdAt: new Date().toISOString() },
+    { id: 2, title: 'Design Database Schema', duration: 30, energy: 'Medium', date: new Date().toISOString().split('T')[0], completed: false, postponedCount: 1, priority: 'medium', description: 'Create MongoDB collections for users and tasks', createdAt: new Date().toISOString() },
+    { id: 3, title: 'Review Documentation', duration: 20, energy: 'Low', date: new Date().toISOString().split('T')[0], completed: true, postponedCount: 0, priority: 'low', description: 'Read through API documentation and examples', createdAt: new Date().toISOString() },
+    { id: 4, title: 'Team Standup Meeting', duration: 15, energy: 'Medium', date: new Date().toISOString().split('T')[0], completed: false, postponedCount: 0, priority: 'high', description: 'Daily sync with the development team', createdAt: new Date().toISOString() },
+    { id: 5, title: 'Implement Authentication', duration: 60, energy: 'High', date: new Date().toISOString().split('T')[0], completed: false, postponedCount: 2, priority: 'high', description: 'Add login/signup with JWT and session management', createdAt: new Date().toISOString() }
+];
