@@ -50,8 +50,7 @@ Keep responses concise, practical, and actionable.`;
       systemPrompt,
       message
     ]);
-    
-    const response = await result.response;
+    const response = await fetch('/api/ai/chat');
     const aiMessage = response.text();
 
     // Get user to update chat history
@@ -110,11 +109,11 @@ Keep responses concise, practical, and actionable.`;
 
 export async function GET(request) {
   try {
-    const { userId } = await auth();
+    // const { userId } = await auth();
     
-    if (!userId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+    // if (!userId) {
+    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // }
 
     await dbConnect();
     

@@ -59,16 +59,11 @@ export default function AIAssistantContent() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: inputMessage,
-          context: context
-        }),
-      });
+     const response = await fetch('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: inputMessage, context })
+    });
 
       if (response.ok) {
         const data = await response.json();
@@ -298,7 +293,7 @@ export default function AIAssistantContent() {
         <div className="mt-3 text-xs text-gray-500 text-center">
           <MessageSquare className="w-4 h-4 inline mr-1" />
           Your conversations are saved and help improve your productivity score
-        </div>
+        </div>  
       </div>
     </div>
   );

@@ -19,6 +19,21 @@ export default function TasksPage({ tasks, setTasks, onPlayTask, productivityLev
     date: new Date().toISOString().split('T')[0]
   });
 
+  // fetch tasks when component loads
+useEffect(() => {
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch("/api/tasks");
+      if (!res.ok) throw new Error("Failed to fetch tasks");
+      const data = await res.json();
+      setTasks(data);
+    } catch (err) {
+      console.error("Error loading tasks:", err);
+    }
+  };
+  fetchTasks();
+}, []);
+
   useEffect(() => {
     let filtered = tasks;
 
@@ -40,17 +55,22 @@ export default function TasksPage({ tasks, setTasks, onPlayTask, productivityLev
     setFilteredTasks(filtered);
   }, [tasks, filters, productivityLevel]);
 
-  const handleAddTask = (taskData) => {
-    const newTask = {
-      id: Date.now(),
-      ...taskData,
-      completed: false,
-      postponedCount: 0,
-      createdAt: new Date().toISOString()
-    };
-    setTasks([...tasks, newTask]);
+const handleAddTask = async (taskData) => {
+  try {
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(taskData),
+    });
+    if (!res.ok) throw new Error("Failed to add task");
+    const newTask = await res.json();
+    setTasks([...tasks, newTask]); // add to state
     setIsModalOpen(false);
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   const handleEditTask = (taskData) => {
     setTasks(tasks.map(task =>
@@ -60,23 +80,34 @@ export default function TasksPage({ tasks, setTasks, onPlayTask, productivityLev
     setIsModalOpen(false);
   };
 
-  const handleDeleteTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-  };
+const handleDeleteTask = async (taskId) => {
+  try {
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete task");
+    setTasks(tasks.filter((t) => t._id !== taskId));
+  } catch (err) {
+    console.error(err);
+  }
+};
 
-  const handleToggleComplete = (task) => {
-    const isCompleting = !task.completed;
-    setTasks(tasks.map(t =>
-      t.id === task.id ? { ...t, completed: !t.completed } : t
-    ));
-    if (isCompleting) {
-      setUserData(prev => ({
-        ...prev,
-        xp: prev.xp + 10,
-        history: [...prev.history, { ...task, completedAt: new Date().toISOString() }]
-      }));
-    }
-  };
+
+  const handleToggleComplete = async (task) => {
+  try {
+    const res = await fetch(`/api/tasks/${task._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: !task.completed }),
+    });
+    if (!res.ok) throw new Error("Failed to update task");
+    const updatedTask = await res.json();
+    setTasks(tasks.map((t) => (t._id === updatedTask._id ? updatedTask : t)));
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   const openEditModal = (task) => {
     setEditingTask(task);
